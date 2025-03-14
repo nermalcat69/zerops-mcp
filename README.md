@@ -1,106 +1,132 @@
-# Puppeteer
+# Zerops Documentation MCP Server
 
-A Model Context Protocol server that provides browser automation capabilities using Puppeteer. This server enables LLMs to interact with web pages, take screenshots, and execute JavaScript in a real browser environment.
+This project provides a Managed Context Provider (MCP) server that crawls and indexes the Zerops documentation (https://docs.zerops.io) and makes it available as a context source for Cursor IDE.
 
-## Components
+## Features
 
-### Tools
+- Written in TypeScript for improved maintainability and type safety
+- Crawls and indexes Zerops documentation
+- Finds the search functionality using aria-label attributes
+- Provides a search API for querying documentation
+- Implements the MCP protocol for Cursor IDE integration using the `@modelcontextprotocol/sdk`
+- Uses Drizzle ORM with PostgreSQL for efficient database operations
+- Scheduled crawling to keep documentation up-to-date
 
-- **puppeteer_navigate**
-  - Navigate to any URL in the browser
-  - Input: `url` (string)
+## Prerequisites
 
-- **puppeteer_screenshot**
-  - Capture screenshots of the entire page or specific elements
-  - Inputs:
-    - `name` (string, required): Name for the screenshot
-    - `selector` (string, optional): CSS selector for element to screenshot
-    - `width` (number, optional, default: 800): Screenshot width
-    - `height` (number, optional, default: 600): Screenshot height
+- Node.js 16+
+- PostgreSQL database
+- Docker (optional, for containerized deployment)
 
-- **puppeteer_click**
-  - Click elements on the page
-  - Input: `selector` (string): CSS selector for element to click
+## Setup
 
-- **puppeteer_hover**
-  - Hover elements on the page
-  - Input: `selector` (string): CSS selector for element to hover
+1. Clone this repository:
+   ```
+   git clone https://your-repository-url/zerops-docs-mcp.git
+   cd zerops-docs-mcp
+   ```
 
-- **puppeteer_fill**
-  - Fill out input fields
-  - Inputs:
-    - `selector` (string): CSS selector for input field
-    - `value` (string): Value to fill
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-- **puppeteer_select**
-  - Select an element with SELECT tag
-  - Inputs:
-    - `selector` (string): CSS selector for element to select
-    - `value` (string): Value to select
+3. Set up environment variables by creating a `.env` file:
+   ```
+   DATABASE_URL="postgresql://username:password@localhost:5432/zerops_docs"
+   PORT=3000
+   CRAWL_INTERVAL_HOURS=24
+   CONTACT_EMAIL="your-email@example.com"
+   ```
 
-- **puppeteer_evaluate**
-  - Execute JavaScript in the browser console
-  - Input: `script` (string): JavaScript code to execute
+4. Set up the database:
+   ```
+   npm run migrate
+   npm run push
+   ```
 
-### Resources
+5. Start the server:
+   ```
+   npm start
+   ```
 
-The server provides access to two types of resources:
+## How It Works
 
-1. **Console Logs** (`console://logs`)
-   - Browser console output in text format
-   - Includes all console messages from the browser
+### MCP Protocol Integration
 
-2. **Screenshots** (`screenshot://<name>`)
-   - PNG images of captured screenshots
-   - Accessible via the screenshot name specified during capture
+This server implements the Model Context Protocol (MCP) using the official SDK (`@modelcontextprotocol/sdk`). This allows Cursor IDE to communicate with the server using a standardized protocol for retrieving context from documentation.
 
-## Key Features
+When a user sends a query from Cursor IDE, the server:
 
-- Browser automation
-- Console log monitoring
-- Screenshot capabilities
-- JavaScript execution
-- Basic web interaction (navigation, clicking, form filling)
+1. Receives the query through the `/api/mcp` endpoint
+2. Processes the query to extract keywords
+3. Searches the indexed documentation for relevant content
+4. Returns formatted context data following the MCP protocol specification
 
-## Configuration to use Puppeteer Server
-Here's the Claude Desktop configuration to use the Puppeter server:
+### Crawling Process
 
-### Docker
+The server crawls the Zerops documentation by:
 
-**NOTE** The docker implementation will use headless chromium, where as the NPX version will open a browser window.
+1. Starting at the main documentation URL
+2. Identifying the search functionality using aria-label attributes
+3. Extracting content from each page
+4. Following links to other documentation pages
+5. Building a comprehensive index of the documentation
 
-```json
-{
-  "mcpServers": {
-    "puppeteer": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--init", "-e", "DOCKER_CONTAINER=true", "mcp/puppeteer"]
-    }
-  }
-}
+### Database Schema
+
+The server uses Drizzle ORM with two main tables:
+
+- `pages`: Stores the URL, title, and content of each documentation page
+- `search_index`: Stores keywords extracted from pages with relevance scores
+
+## Usage
+
+### Starting a Crawl
+
+To start crawling the Zerops documentation:
+
+```
+curl -X POST http://localhost:3000/api/crawl
 ```
 
-### NPX
+### Searching Documentation
 
-```json
-{
-  "mcpServers": {
-    "puppeteer": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
-    }
-  }
-}
+To search the documentation:
+
+```
+curl "http://localhost:3000/api/search?query=your+search+terms"
 ```
 
-## Build
+### Using as an MCP with Cursor IDE
 
-Docker build:
+1. In Cursor IDE, go to Settings > Context Sources > Add MCP Source
+2. Enter the following details:
+   - Name: Zerops Documentation
+   - Endpoint: http://your-server-url:3000/api/mcp
+3. Click "Add Source"
 
-```bash
-docker build -t mcp/puppeteer -f src/puppeteer/Dockerfile .
-```
+Now you can use Zerops documentation as a context source in Cursor IDE.
+
+## Docker Deployment
+
+1. Build the Docker image:
+   ```
+   docker build -t zerops-docs-mcp .
+   ```
+
+2. Run the container:
+   ```
+   docker run -p 3000:3000 --env-file .env zerops-docs-mcp
+   ```
+
+## API Endpoints
+
+- `POST /api/crawl` - Start crawling the Zerops documentation
+- `GET /api/search?query=your+search` - Search the documentation
+- `POST /api/mcp` - MCP endpoint for Cursor IDE integration (implements MCP protocol)
+- `GET /health` - Health check endpoint
 
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+MIT
