@@ -1,0 +1,26 @@
+zerops:
+  - setup: api
+    build:
+      base: nodejs@22
+      envVariables:
+        DATABASE_URL: ${db_connectionString}
+      buildCommands:
+        - pnpm i
+        - pnpm run build
+        - pnpm migrate
+        - pnpm push
+      deployFiles:
+        - dist
+        - package.json
+        - node_modules
+      cache:
+        - node_modules
+        - pnpm-lock.yaml
+    run:
+      base: nodejs@22
+      envVariables:
+        DATABASE_URL: ${db_connectionString}
+      ports:
+        - port: 3000
+          httpSupport: true
+      start: pnpm start
