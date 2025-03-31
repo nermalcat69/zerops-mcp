@@ -3,12 +3,10 @@ zerops:
     build:
       base: nodejs@22
       envVariables:
-        DATABASE_URL: ${db_connectionString}
+        NODE_ENV: production
       buildCommands:
         - pnpm i
         - pnpm run build
-        - pnpm migrate
-        - pnpm push
       deployFiles:
         - dist
         - package.json
@@ -19,7 +17,9 @@ zerops:
     run:
       base: nodejs@22
       envVariables:
-        DATABASE_URL: ${db_connectionString}
+        NODE_ENV: production
+      initCommands:
+        - pnpm push
       ports:
         - port: 3000
           httpSupport: true
